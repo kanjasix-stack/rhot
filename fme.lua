@@ -13,13 +13,38 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl -- Minimize with Left Ctrl
 })
 
--- Make window draggable
-local gui = game:GetService("CoreGui"):FindFirstChild("Fluent") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Fluent")
+-- Make window draggable without moving camera
+task.wait(0.5) -- Wait for UI to fully load
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local gui = game:GetService("CoreGui"):FindFirstChild("Fluent") or Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Fluent")
+
 if gui then
     local frame = gui:FindFirstChildWhichIsA("Frame", true)
     if frame then
         frame.Draggable = true
         frame.Active = true
+
+        -- Block mouse input from affecting the game when hovering over GUI
+        local isHovering = false
+
+        frame.MouseEnter:Connect(function()
+            isHovering = true
+        end)
+
+        frame.MouseLeave:Connect(function()
+            isHovering = false
+        end)
+
+        -- Prevent camera from moving when GUI is being interacted with
+        RunService.RenderStepped:Connect(function()
+            if isHovering then
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            end
+        end)
     end
 end
 
@@ -32,6 +57,9 @@ local MainTab = Window:AddTab({
 -- Fishing Section
 local FishingSection = MainTab:AddSection("Fishing")
 
+-- Auto Fishing Variables
+local AutoFishingLoop
+
 local AutoFishingToggle = MainTab:AddToggle("AutoFishing", {
     Title = "Auto Fishing",
     Default = false,
@@ -39,11 +67,39 @@ local AutoFishingToggle = MainTab:AddToggle("AutoFishing", {
         getgenv().AutoFishing = Value
         print("Auto Fishing:", Value)
 
-        -- Add your auto fishing code here later
         if Value then
             print("Auto Fishing enabled!")
+
+            -- Start auto fishing loop
+            AutoFishingLoop = task.spawn(function()
+                while getgenv().AutoFishing do
+                    -- Step 1: Equip fishing rod from hotbar slot 1
+                    local equipArgs = {[1] = 1}
+                    game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RE/EquipToolFromHotbar"):FireServer(unpack(equipArgs))
+
+                    task.wait(0.5) -- Wait a bit for rod to equip
+
+                    -- Step 2: Cast the fishing rod with charge power
+                    local castArgs = {[1] = 1756863567.2171}
+                    game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RF/ChargeFishingRod"):InvokeServer(unpack(castArgs))
+
+                    task.wait(0.3) -- Wait before completing
+
+                    -- Step 3: Complete fishing (catch the fish)
+                    game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RE/FishingCompleted"):FireServer()
+
+                    task.wait(0.5) -- Wait before next cycle
+                end
+            end)
         else
             print("Auto Fishing disabled!")
+            getgenv().AutoFishing = false
+
+            -- Stop the loop
+            if AutoFishingLoop then
+                task.cancel(AutoFishingLoop)
+                AutoFishingLoop = nil
+            end
         end
     end
 })
