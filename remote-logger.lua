@@ -1,106 +1,75 @@
 -- Simple Remote Logger for Delta Executor
 -- Run this BEFORE your heavy script
 
-print("=== Remote Logger Starting ===")
+warn("=== Remote Logger Starting ===")
 
 -- Store all remote calls
-getgenv().RemoteLog = {}
+_G.RemoteLog = {}
 local logCount = 0
+
+-- Check if hookmetamethod exists
+if not hookmetamethod then
+    warn("ERROR: Your executor doesn't support hookmetamethod!")
+    warn("Try using Simple Spy instead")
+    return
+end
 
 -- Hook into remote calls
 local old
-old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+old = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
 
     if method == "FireServer" or method == "InvokeServer" then
         logCount = logCount + 1
 
-        local remotePath = self:GetFullName()
+        local remotePath = tostring(self)
 
-        print(string.format("[Remote #%d] %s:%s()", logCount, remotePath, method))
+        warn("[Remote #" .. logCount .. "] " .. remotePath .. ":" .. method .. "()")
 
         -- Store in log
-        table.insert(getgenv().RemoteLog, {
+        table.insert(_G.RemoteLog, {
             Number = logCount,
             Path = remotePath,
             Method = method,
-            Args = args,
-            Time = os.time()
+            Args = args
         })
     end
 
     return old(self, ...)
-end))
+end)
 
-print("=== Remote Logger Active! ===")
-print("Now run your heavy script and use its features")
-print("Type 'showlogs()' to see all captured remotes")
-print("")
+warn("=== Remote Logger Active! ===")
+warn("Now run your heavy script and use its features")
+warn("All remotes will be printed in YELLOW text")
+warn("")
 
 -- Function to display all logs
-getgenv().showlogs = function()
-    print("\n========== CAPTURED REMOTES ==========")
-    if #getgenv().RemoteLog == 0 then
-        print("No remotes captured yet!")
+_G.showlogs = function()
+    warn("========== CAPTURED REMOTES ==========")
+    if #_G.RemoteLog == 0 then
+        warn("No remotes captured yet!")
         return
     end
 
-    for i, log in ipairs(getgenv().RemoteLog) do
-        print(string.format("\n--- Remote #%d ---", log.Number))
-        print("Path: " .. log.Path)
-        print("Method: " .. log.Method)
+    for i, log in ipairs(_G.RemoteLog) do
+        warn("--- Remote #" .. log.Number .. " ---")
+        warn("Path: " .. log.Path)
+        warn("Method: " .. log.Method)
 
         -- Print arguments
         if #log.Args > 0 then
-            print("Arguments:")
+            warn("Arguments:")
             for j, arg in ipairs(log.Args) do
-                print(string.format("  [%d] = %s", j, tostring(arg)))
+                warn("  [" .. j .. "] = " .. tostring(arg))
             end
         else
-            print("Arguments: (none)")
+            warn("Arguments: (none)")
         end
     end
-    print("\n========== END OF LOG ==========")
-    print(string.format("Total remotes captured: %d", #getgenv().RemoteLog))
+    warn("========== END OF LOG ==========")
+    warn("Total remotes captured: " .. #_G.RemoteLog)
 end
 
--- Function to copy all logs as Lua code
-getgenv().copylogs = function()
-    local output = "-- Captured Remote Calls\n\n"
-
-    for i, log in ipairs(getgenv().RemoteLog) do
-        output = output .. string.format("-- Remote #%d\n", log.Number)
-
-        if log.Method == "FireServer" then
-            output = output .. string.format('game:GetService("ReplicatedStorage").%s:FireServer(', log.Path:split("ReplicatedStorage.")[2] or log.Path)
-        else
-            output = output .. string.format('game:GetService("ReplicatedStorage").%s:InvokeServer(', log.Path:split("ReplicatedStorage.")[2] or log.Path)
-        end
-
-        -- Add args
-        for j, arg in ipairs(log.Args) do
-            if type(arg) == "string" then
-                output = output .. string.format('"%s"', arg)
-            else
-                output = output .. tostring(arg)
-            end
-            if j < #log.Args then
-                output = output .. ", "
-            end
-        end
-
-        output = output .. ")\n\n"
-    end
-
-    if setclipboard then
-        setclipboard(output)
-        print("✓ All logs copied to clipboard!")
-    else
-        print(output)
-    end
-end
-
-print("Commands:")
-print("  showlogs() - Display all captured remotes")
-print("  copylogs() - Copy all remotes as Lua code")
+warn("Commands:")
+warn("  showlogs() - Display all captured remotes")
