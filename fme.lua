@@ -13,8 +13,50 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl -- Minimize with Left Ctrl
 })
 
--- We'll add tabs and features later
-print("Rhot loaded successfully!")
+-- Create Main Tab
+local MainTab = Window:AddTab({
+    Title = "Main",
+    Icon = "home"
+})
 
--- Keep the UI running
-game:GetService("RunService").Heartbeat:Wait()
+-- Fishing Section
+local FishingSection = MainTab:AddSection("Fishing")
+
+local AutoFishingToggle = MainTab:AddToggle("AutoFishing", {
+    Title = "Auto Fishing",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoFishing = Value
+        print("Auto Fishing:", Value)
+
+        -- Add your auto fishing code here later
+        if Value then
+            print("Auto Fishing enabled!")
+        else
+            print("Auto Fishing disabled!")
+        end
+    end
+})
+
+-- Player Section
+local PlayerSection = MainTab:AddSection("Player")
+
+local InfiniteJumpToggle = MainTab:AddToggle("InfiniteJump", {
+    Title = "Infinite Jump",
+    Default = false,
+    Callback = function(Value)
+        getgenv().InfiniteJump = Value
+        print("Infinite Jump:", Value)
+
+        -- Infinite Jump code
+        if Value then
+            game:GetService("UserInputService").JumpRequest:Connect(function()
+                if getgenv().InfiniteJump then
+                    game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                end
+            end)
+        end
+    end
+})
+
+print("Rhot loaded successfully!")
