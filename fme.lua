@@ -13,40 +13,7 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl -- Minimize with Left Ctrl
 })
 
--- Make window draggable without moving camera
-task.wait(0.5) -- Wait for UI to fully load
-
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-
-local gui = game:GetService("CoreGui"):FindFirstChild("Fluent") or Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Fluent")
-
-if gui then
-    local frame = gui:FindFirstChildWhichIsA("Frame", true)
-    if frame then
-        frame.Draggable = true
-        frame.Active = true
-
-        -- Block mouse input from affecting the game when hovering over GUI
-        local isHovering = false
-
-        frame.MouseEnter:Connect(function()
-            isHovering = true
-        end)
-
-        frame.MouseLeave:Connect(function()
-            isHovering = false
-        end)
-
-        -- Prevent camera from moving when GUI is being interacted with
-        RunService.RenderStepped:Connect(function()
-            if isHovering then
-                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-            end
-        end)
-    end
-end
+-- Fluent UI handles dragging automatically, no additional code needed
 
 -- Create Main Tab
 local MainTab = Window:AddTab({
@@ -72,23 +39,30 @@ local AutoFishingToggle = MainTab:AddToggle("AutoFishing", {
 
             -- Start auto fishing loop
             AutoFishingLoop = task.spawn(function()
+                -- Step 1: Equip fishing rod ONCE at the start
+                local equipArgs = {[1] = 1}
+                game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RE/EquipToolFromHotbar"):FireServer(unpack(equipArgs))
+                print("Fishing rod equipped!")
+
+                task.wait(1) -- Wait for rod to equip
+
+                local lastChargeTime = 0
+
                 while getgenv().AutoFishing do
-                    -- Step 1: Equip fishing rod from hotbar slot 1
-                    local equipArgs = {[1] = 1}
-                    game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RE/EquipToolFromHotbar"):FireServer(unpack(equipArgs))
+                    local currentTime = tick()
 
-                    task.wait(0.5) -- Wait a bit for rod to equip
+                    -- Step 2: Cast/Charge the fishing rod every 3 seconds
+                    if currentTime - lastChargeTime >= 3 then
+                        local castArgs = {[1] = 1756863567.2171}
+                        game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RF/ChargeFishingRod"):InvokeServer(unpack(castArgs))
+                        lastChargeTime = currentTime
+                        print("Fishing rod charged!")
+                    end
 
-                    -- Step 2: Cast the fishing rod with charge power
-                    local castArgs = {[1] = 1756863567.2171}
-                    game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RF/ChargeFishingRod"):InvokeServer(unpack(castArgs))
-
-                    task.wait(0.3) -- Wait before completing
-
-                    -- Step 3: Complete fishing (catch the fish)
+                    -- Step 3: Complete fishing continuously (loop)
                     game:GetService("ReplicatedStorage").Packages._Index:FindFirstChild("sleitnick_net@0.2.0").net:FindFirstChild("RE/FishingCompleted"):FireServer()
 
-                    task.wait(0.5) -- Wait before next cycle
+                    task.wait(0.1) -- Small wait to prevent spam
                 end
             end)
         else
